@@ -122,14 +122,24 @@ function App() {
   const fetchWorkbenchData = async () => {
     setIsFetchingWorkbench(true)
     try {
-      const user = await window.spark.user()
-      const baseHeaders = { ...(customHeaders || DEFAULT_HEADERS) }
+      toast.info('Step 1: Establishing session...')
       
-      const headers: Record<string, string> = { ...baseHeaders }
+      const initialResponse = await fetch('https://github.com/spark', {
+        credentials: includeCookies ? 'include' : 'omit',
+        mode: useSameOriginMode ? 'same-origin' : 'cors'
+      })
+
+      if (!initialResponse.ok) {
+        throw new Error(`Failed to establish session: ${initialResponse.status}`)
+      }
+
+      toast.info('Step 2: Fetching workbench data...')
+      
+      const baseHeaders = { ...(customHeaders || DEFAULT_HEADERS) }
       
       const response = await fetch('https://github.com/copilot/spark/workbench.json', {
         headers: {
-          ...headers
+          ...baseHeaders
         },
         credentials: includeCookies ? 'include' : 'omit',
         mode: useSameOriginMode ? 'same-origin' : 'cors'
