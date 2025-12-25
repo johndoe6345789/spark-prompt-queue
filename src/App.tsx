@@ -126,14 +126,10 @@ function App() {
       const baseHeaders = { ...(customHeaders || DEFAULT_HEADERS) }
       
       const headers: Record<string, string> = { ...baseHeaders }
-      if (!includeCorsMode && headers['sec-fetch-mode']) {
-        delete headers['sec-fetch-mode']
-      }
       
       const response = await fetch('https://github.com/copilot/spark/workbench.json', {
         headers: {
-          ...headers,
-          'Accept': 'application/json',
+          ...headers
         },
         credentials: includeCookies ? 'include' : 'omit',
         mode: useSameOriginMode ? 'same-origin' : 'cors'
