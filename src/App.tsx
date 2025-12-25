@@ -20,7 +20,9 @@ import {
   XCircle, 
   ArrowClockwise,
   Folder,
-  FolderOpen
+  FolderOpen,
+  CloudArrowDown,
+  Spinner
 } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
@@ -61,11 +63,57 @@ function App() {
   const [showProjectDialog, setShowProjectDialog] = useState(false)
   const [newProjectName, setNewProjectName] = useState('')
   const [newProjectDescription, setNewProjectDescription] = useState('')
+  const [isFetchingWorkbench, setIsFetchingWorkbench] = useState(false)
 
   const currentPrompt = queue?.find(p => p.id === currentPromptId)
   const completedCount = queue?.filter(p => p.status === 'completed').length || 0
   const totalCount = queue?.length || 0
   const selectedProject = projects?.find(p => p.id === selectedProjectId)
+
+  const fetchWorkbenchData = async () => {
+    setIsFetchingWorkbench(true)
+    try {
+      const user = await window.spark.user()
+      const response = await fetch('https://github.com/copilot/spark/workbench', {
+        headers: {
+          'Accept': 'application/json',
+        },
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch workbench: ${response.status}`)
+      }
+
+      const data = await response.json()
+      
+      if (data.sparks && Array.isArray(data.sparks)) {
+        const fetchedProjects: SparkProject[] = data.sparks.map((spark: any) => ({
+          id: spark.id || `spark-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          name: spark.name || spark.title || 'Untitled Spark',
+          description: spark.description || spark.summary || undefined
+        }))
+
+        if (fetchedProjects.length > 0) {
+          setProjects(current => {
+            const existingIds = new Set((current || []).map(p => p.id))
+            const newProjects = fetchedProjects.filter(p => !existingIds.has(p.id))
+            return [...(current || []), ...newProjects]
+          })
+          toast.success(`Loaded ${fetchedProjects.length} projects from workbench`)
+        } else {
+          toast.info('No projects found in workbench')
+        }
+      } else {
+        toast.info('Workbench data structure not as expected')
+      }
+    } catch (error) {
+      console.error('Error fetching workbench:', error)
+      toast.error(`Failed to fetch workbench data: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsFetchingWorkbench(false)
+    }
+  }
 
   const addProject = () => {
     if (!newProjectName.trim()) {
@@ -279,14 +327,34 @@ function App() {
                   Choose or create a Spark project
                 </CardDescription>
               </div>
-              <Button 
-                onClick={() => setShowProjectDialog(true)}
-                variant="outline"
-                size="sm"
-              >
-                <Plus weight="bold" className="mr-2" />
-                New Project
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={fetchWorkbenchData}
+                  variant="outline"
+                  size="sm"
+                  disabled={isFetchingWorkbench}
+                >
+                  {isFetchingWorkbench ? (
+                    <>
+                      <Spinner weight="bold" className="mr-2 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      <CloudArrowDown weight="bold" className="mr-2" />
+                      Load from Workbench
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  onClick={() => setShowProjectDialog(true)}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Plus weight="bold" className="mr-2" />
+                  New Project
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">

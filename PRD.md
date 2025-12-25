@@ -13,11 +13,11 @@ This is a queue management system with basic CRUD operations and sequential proc
 ## Essential Features
 
 **Project Selection**
-- Functionality: Create, select, and manage Spark projects
+- Functionality: Create, select, and manage Spark projects, including loading existing projects from GitHub Spark workbench
 - Purpose: Organize prompts by project and target the correct Spark instance
-- Trigger: User selects from project dropdown or clicks "New Project" button
-- Progression: Click new project → Enter project name and description → Project created and selected → Can switch between projects or delete them
-- Success criteria: Projects persist in storage, can be selected before adding prompts, current project shows in UI
+- Trigger: User selects from project dropdown, clicks "New Project" button, or clicks "Load from Workbench"
+- Progression: Click new project → Enter project name and description → Project created and selected → Can switch between projects or delete them | OR Click load from workbench → Fetches projects from GitHub → Projects added to list → Can select loaded project
+- Success criteria: Projects persist in storage, can be selected before adding prompts, current project shows in UI, workbench projects can be fetched and integrated
 
 **Queue Management**
 - Functionality: Add, edit, delete, and reorder prompts in a queue
@@ -57,6 +57,9 @@ This is a queue management system with basic CRUD operations and sequential proc
 - **Page Refresh**: Persist queue, history, projects, and selected project using KV storage
 - **Queue Modification During Execution**: Allow adding new prompts but prevent deletion of currently processing prompt
 - **Project Deletion**: Prevent deletion if project is currently processing prompts, deselect if current project deleted
+- **Workbench API Failures**: Show error toast with details, gracefully handle network issues or authentication problems
+- **Empty Workbench**: Display informative message when no projects exist in workbench
+- **Duplicate Project IDs**: Prevent importing projects that already exist in the local list
 
 ## Design Direction
 
@@ -130,6 +133,8 @@ Animations should emphasize workflow progression and system responsiveness - use
   - ArrowClockwise for retry
   - Folder for project icon (closed state)
   - FolderOpen for selected project icon (open state)
+  - CloudArrowDown for loading workbench data
+  - Spinner for loading state (animated)
   
 - **Spacing**: 
   - Container padding: p-6
