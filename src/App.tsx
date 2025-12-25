@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Progress } from '@/components/ui/progress'
 import { Toaster } from '@/components/ui/sonner'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 import { 
   Plus, 
   Play, 
@@ -22,7 +23,8 @@ import {
   Folder,
   FolderOpen,
   CloudArrowDown,
-  Spinner
+  Spinner,
+  Gear
 } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
@@ -50,32 +52,77 @@ type SparkProject = {
   description?: string
 }
 
+const DEFAULT_HEADERS = {
+  "accept": "application/json",
+  "accept-language": "en-GB,en-US;q=0.9,en;q=0.8",
+  "content-type": "application/json",
+  "priority": "u=1, i",
+  "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+  "sec-ch-ua-mobile": "?0",
+  "sec-ch-ua-platform": "\"macOS\"",
+  "sec-fetch-dest": "empty",
+  "sec-fetch-mode": "cors",
+  "sec-fetch-site": "same-origin"
+}
+
 function App() {
   const [queue, setQueue] = useKV<QueuedPrompt[]>('prompt-queue', [])
   const [history, setHistory] = useKV<PromptResponse[]>('prompt-history', [])
   const [projects, setProjects] = useKV<SparkProject[]>('spark-projects', [])
   const [selectedProjectId, setSelectedProjectId] = useKV<string | null>('selected-project-id', null)
+  const [customHeaders, setCustomHeaders] = useKV<Record<string, string>>('workbench-headers', DEFAULT_HEADERS)
   const [newPrompt, setNewPrompt] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [currentPromptId, setCurrentPromptId] = useState<string | null>(null)
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [selectedResponse, setSelectedResponse] = useState<PromptResponse | null>(null)
   const [showProjectDialog, setShowProjectDialog] = useState(false)
+  const [showOptionsDialog, setShowOptionsDialog] = useState(false)
   const [newProjectName, setNewProjectName] = useState('')
   const [newProjectDescription, setNewProjectDescription] = useState('')
   const [isFetchingWorkbench, setIsFetchingWorkbench] = useState(false)
+  const [headersText, setHeadersText] = useState('')
 
   const currentPrompt = queue?.find(p => p.id === currentPromptId)
   const completedCount = queue?.filter(p => p.status === 'completed').length || 0
   const totalCount = queue?.length || 0
   const selectedProject = projects?.find(p => p.id === selectedProjectId)
 
+  useEffect(() => {
+    if (showOptionsDialog) {
+      setHeadersText(JSON.stringify(customHeaders || DEFAULT_HEADERS, null, 2))
+    }
+  }, [showOptionsDialog, customHeaders])
+
+  const saveHeaders = () => {
+    try {
+      const parsed = JSON.parse(headersText)
+      if (typeof parsed !== 'object' || Array.isArray(parsed)) {
+        toast.error('Headers must be a JSON object')
+        return
+      }
+      setCustomHeaders(parsed)
+      setShowOptionsDialog(false)
+      toast.success('Headers configuration saved')
+    } catch (error) {
+      toast.error('Invalid JSON format')
+    }
+  }
+
+  const resetHeaders = () => {
+    setHeadersText(JSON.stringify(DEFAULT_HEADERS, null, 2))
+    toast.info('Reset to default headers')
+  }
+
   const fetchWorkbenchData = async () => {
     setIsFetchingWorkbench(true)
     try {
       const user = await window.spark.user()
+      const headers = customHeaders || DEFAULT_HEADERS
+      
       const response = await fetch('https://github.com/copilot/spark/workbench', {
         headers: {
+          ...headers,
           'Accept': 'application/json',
         },
         credentials: 'include'
@@ -328,6 +375,14 @@ function App() {
                 </CardDescription>
               </div>
               <div className="flex gap-2">
+                <Button 
+                  onClick={() => setShowOptionsDialog(true)}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Gear weight="bold" className="mr-2" />
+                  Options
+                </Button>
                 <Button 
                   onClick={fetchWorkbenchData}
                   variant="outline"
@@ -768,6 +823,60 @@ function App() {
               >
                 <Plus weight="bold" className="mr-2" />
                 Create
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showOptionsDialog} onOpenChange={setShowOptionsDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="font-mono text-base">Workbench Headers Configuration</DialogTitle>
+            <DialogDescription className="text-xs">
+              Configure custom HTTP headers for workbench API requests
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="headers-json" className="text-xs text-muted-foreground tracking-wide uppercase">
+                Headers (JSON Format)
+              </label>
+              <Textarea
+                id="headers-json"
+                value={headersText}
+                onChange={(e) => setHeadersText(e.target.value)}
+                placeholder='{"accept": "application/json"}'
+                className="font-mono text-xs h-[400px] resize-none"
+              />
+              <p className="text-xs text-muted-foreground">
+                Enter headers as a JSON object. Sensitive headers are automatically filtered for security.
+              </p>
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={resetHeaders}
+              >
+                <ArrowClockwise weight="bold" className="mr-2" />
+                Reset to Default
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowOptionsDialog(false)
+                  setHeadersText(JSON.stringify(customHeaders || DEFAULT_HEADERS, null, 2))
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={saveHeaders}
+                className="bg-accent text-accent-foreground hover:bg-accent/90"
+              >
+                <CheckCircle weight="bold" className="mr-2" />
+                Save
               </Button>
             </div>
           </div>
