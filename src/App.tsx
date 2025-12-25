@@ -74,6 +74,7 @@ function App() {
   const [selectedProjectId, setSelectedProjectId] = useKV<string | null>('selected-project-id', null)
   const [customHeaders, setCustomHeaders] = useKV<Record<string, string>>('workbench-headers', DEFAULT_HEADERS)
   const [includeCookies, setIncludeCookies] = useKV<boolean>('include-cookies', true)
+  const [includeCorsMode, setIncludeCorsMode] = useKV<boolean>('include-cors-mode', true)
   const [newPrompt, setNewPrompt] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [currentPromptId, setCurrentPromptId] = useState<string | null>(null)
@@ -121,7 +122,12 @@ function App() {
     setIsFetchingWorkbench(true)
     try {
       const user = await window.spark.user()
-      const headers = customHeaders || DEFAULT_HEADERS
+      const baseHeaders = { ...(customHeaders || DEFAULT_HEADERS) }
+      
+      const headers: Record<string, string> = { ...baseHeaders }
+      if (!includeCorsMode && headers['sec-fetch-mode']) {
+        delete headers['sec-fetch-mode']
+      }
       
       const response = await fetch('https://github.com/copilot/spark/workbench.json', {
         headers: {
@@ -833,31 +839,52 @@ function App() {
       </Dialog>
 
       <Dialog open={showOptionsDialog} onOpenChange={setShowOptionsDialog}>
-        <DialogContent className="max-w-3xl max-h-[90vh]">
+        <DialogContent className="max-w-2xl max-h-[85vh]">
           <DialogHeader>
             <DialogTitle className="font-mono text-base">Workbench Configuration</DialogTitle>
             <DialogDescription className="text-xs">
-              Configure HTTP headers and request options for workbench API
+              Configure request options for workbench API
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-6">
-            <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-              <Checkbox
-                id="include-cookies"
-                checked={includeCookies}
-                onCheckedChange={(checked) => setIncludeCookies(checked === true)}
-              />
-              <div className="flex items-center gap-2 flex-1">
-                <Cookie size={18} className="text-accent" />
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                <Checkbox
+                  id="include-cookies"
+                  checked={includeCookies}
+                  onCheckedChange={(checked) => setIncludeCookies(checked === true)}
+                />
+                <div className="flex items-center gap-2 flex-1">
+                  <Cookie size={16} className="text-accent" />
+                  <div className="flex-1">
+                    <label 
+                      htmlFor="include-cookies" 
+                      className="text-sm font-medium cursor-pointer"
+                    >
+                      Include Cookies
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      Send cookies with requests (credentials: include)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                <Checkbox
+                  id="include-cors-mode"
+                  checked={includeCorsMode}
+                  onCheckedChange={(checked) => setIncludeCorsMode(checked === true)}
+                />
                 <div className="flex-1">
                   <label 
-                    htmlFor="include-cookies" 
+                    htmlFor="include-cors-mode" 
                     className="text-sm font-medium cursor-pointer"
                   >
-                    Include Cookies
+                    Include sec-fetch-mode Header
                   </label>
                   <p className="text-xs text-muted-foreground">
-                    Send cookies with workbench fetch requests (credentials: include)
+                    Add "sec-fetch-mode": "cors" to request headers
                   </p>
                 </div>
               </div>
@@ -865,17 +892,17 @@ function App() {
 
             <div className="space-y-2">
               <label htmlFor="headers-json" className="text-xs text-muted-foreground tracking-wide uppercase">
-                Headers (JSON Format)
+                Custom Headers (JSON)
               </label>
               <Textarea
                 id="headers-json"
                 value={headersText}
                 onChange={(e) => setHeadersText(e.target.value)}
                 placeholder='{"accept": "application/json"}'
-                className="font-mono text-xs h-[350px] resize-none"
+                className="font-mono text-xs h-[240px] resize-none"
               />
               <p className="text-xs text-muted-foreground">
-                Enter headers as a JSON object. Sensitive headers are automatically filtered for security.
+                Additional headers as JSON object
               </p>
             </div>
 
@@ -883,9 +910,10 @@ function App() {
               <Button
                 variant="outline"
                 onClick={resetHeaders}
+                size="sm"
               >
                 <ArrowClockwise weight="bold" className="mr-2" />
-                Reset to Default
+                Reset
               </Button>
               <Button
                 variant="outline"
@@ -893,12 +921,14 @@ function App() {
                   setShowOptionsDialog(false)
                   setHeadersText(JSON.stringify(customHeaders || DEFAULT_HEADERS, null, 2))
                 }}
+                size="sm"
               >
                 Cancel
               </Button>
               <Button
                 onClick={saveHeaders}
                 className="bg-accent text-accent-foreground hover:bg-accent/90"
+                size="sm"
               >
                 <CheckCircle weight="bold" className="mr-2" />
                 Save
