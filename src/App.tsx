@@ -75,6 +75,7 @@ function App() {
   const [customHeaders, setCustomHeaders] = useKV<Record<string, string>>('workbench-headers', DEFAULT_HEADERS)
   const [includeCookies, setIncludeCookies] = useKV<boolean>('include-cookies', true)
   const [includeCorsMode, setIncludeCorsMode] = useKV<boolean>('include-cors-mode', true)
+  const [useSameOriginMode, setUseSameOriginMode] = useKV<boolean>('use-same-origin-mode', false)
   const [newPrompt, setNewPrompt] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [currentPromptId, setCurrentPromptId] = useState<string | null>(null)
@@ -135,7 +136,7 @@ function App() {
           'Accept': 'application/json',
         },
         credentials: includeCookies ? 'include' : 'omit',
-        mode: 'cors'
+        mode: useSameOriginMode ? 'same-origin' : 'cors'
       })
 
       if (!response.ok) {
@@ -886,6 +887,25 @@ function App() {
                   </label>
                   <p className="text-xs text-muted-foreground">
                     Add "sec-fetch-mode": "cors" to request headers
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                <Checkbox
+                  id="use-same-origin-mode"
+                  checked={useSameOriginMode}
+                  onCheckedChange={(checked) => setUseSameOriginMode(checked === true)}
+                />
+                <div className="flex-1">
+                  <label 
+                    htmlFor="use-same-origin-mode" 
+                    className="text-sm font-medium cursor-pointer"
+                  >
+                    Use same-origin Mode
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    Set fetch mode to "same-origin" instead of "cors"
                   </p>
                 </div>
               </div>
