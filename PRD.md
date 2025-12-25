@@ -12,11 +12,18 @@ This is a queue management system with basic CRUD operations and sequential proc
 
 ## Essential Features
 
+**Project Selection**
+- Functionality: Create, select, and manage Spark projects
+- Purpose: Organize prompts by project and target the correct Spark instance
+- Trigger: User selects from project dropdown or clicks "New Project" button
+- Progression: Click new project → Enter project name and description → Project created and selected → Can switch between projects or delete them
+- Success criteria: Projects persist in storage, can be selected before adding prompts, current project shows in UI
+
 **Queue Management**
 - Functionality: Add, edit, delete, and reorder prompts in a queue
 - Purpose: Organize multiple prompts before execution
-- Trigger: User clicks "Add Prompt" button or input field
-- Progression: Click add → Enter prompt text → Prompt appears in queue list → Can drag to reorder or delete
+- Trigger: User clicks "Add Prompt" button or input field (requires project selection)
+- Progression: Select project → Click add → Enter prompt text → Prompt appears in queue list → Can drag to reorder or delete
 - Success criteria: Prompts persist in queue, can be reordered via drag-and-drop, and deleted individually
 
 **Prompt Execution**
@@ -42,12 +49,14 @@ This is a queue management system with basic CRUD operations and sequential proc
 
 ## Edge Case Handling
 
+- **No Project Selected**: Disable prompt input and start button, show helpful message to create/select project first
 - **Empty Queue Start**: Disable start button and show helpful message when no prompts exist
 - **API Errors**: Pause queue execution, display error message, allow retry or skip
 - **Duplicate Prompts**: Allow duplicates but show visual indicator
 - **Long Responses**: Truncate in list view with expand option for full content
-- **Page Refresh**: Persist queue and history using KV storage
+- **Page Refresh**: Persist queue, history, projects, and selected project using KV storage
 - **Queue Modification During Execution**: Allow adding new prompts but prevent deletion of currently processing prompt
+- **Project Deletion**: Prevent deletion if project is currently processing prompts, deselect if current project deleted
 
 ## Design Direction
 
@@ -111,14 +120,16 @@ Animations should emphasize workflow progression and system responsiveness - use
   - Status card: Idle (muted), processing (pulsing accent border), complete (success green tint), error (destructive red tint)
   
 - **Icon Selection**: 
-  - Plus for add prompt
+  - Plus for add prompt and new project
   - Play for start queue
   - Pause for pause execution
-  - Trash for delete prompt
+  - Trash for delete prompt and delete project
   - DotsSixVertical for drag handle
   - CheckCircle for completed
   - XCircle for errors
   - ArrowClockwise for retry
+  - Folder for project icon (closed state)
+  - FolderOpen for selected project icon (open state)
   
 - **Spacing**: 
   - Container padding: p-6

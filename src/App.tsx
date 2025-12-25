@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Progress } from '@/components/ui/progress'
 import { Toaster } from '@/components/ui/sonner'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
   Plus, 
   Play, 
@@ -17,7 +18,9 @@ import {
   DotsSixVertical, 
   CheckCircle, 
   XCircle, 
-  ArrowClockwise 
+  ArrowClockwise,
+  Folder,
+  FolderOpen
 } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
@@ -39,20 +42,65 @@ type PromptResponse = {
   success: boolean
 }
 
+type SparkProject = {
+  id: string
+  name: string
+  description?: string
+}
+
 function App() {
   const [queue, setQueue] = useKV<QueuedPrompt[]>('prompt-queue', [])
   const [history, setHistory] = useKV<PromptResponse[]>('prompt-history', [])
+  const [projects, setProjects] = useKV<SparkProject[]>('spark-projects', [])
+  const [selectedProjectId, setSelectedProjectId] = useKV<string | null>('selected-project-id', null)
   const [newPrompt, setNewPrompt] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [currentPromptId, setCurrentPromptId] = useState<string | null>(null)
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [selectedResponse, setSelectedResponse] = useState<PromptResponse | null>(null)
+  const [showProjectDialog, setShowProjectDialog] = useState(false)
+  const [newProjectName, setNewProjectName] = useState('')
+  const [newProjectDescription, setNewProjectDescription] = useState('')
 
   const currentPrompt = queue?.find(p => p.id === currentPromptId)
   const completedCount = queue?.filter(p => p.status === 'completed').length || 0
   const totalCount = queue?.length || 0
+  const selectedProject = projects?.find(p => p.id === selectedProjectId)
+
+  const addProject = () => {
+    if (!newProjectName.trim()) {
+      toast.error('Please enter a project name')
+      return
+    }
+
+    const project: SparkProject = {
+      id: `project-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: newProjectName.trim(),
+      description: newProjectDescription.trim() || undefined
+    }
+
+    setProjects(current => [...(current || []), project])
+    setSelectedProjectId(project.id)
+    setNewProjectName('')
+    setNewProjectDescription('')
+    setShowProjectDialog(false)
+    toast.success('Project created and selected')
+  }
+
+  const deleteProject = (id: string) => {
+    setProjects(current => (current || []).filter(p => p.id !== id))
+    if (selectedProjectId === id) {
+      setSelectedProjectId(null)
+    }
+    toast.success('Project deleted')
+  }
 
   const addPrompt = () => {
+    if (!selectedProjectId) {
+      toast.error('Please select a project first')
+      return
+    }
+    
     if (!newPrompt.trim()) {
       toast.error('Please enter a prompt')
       return
@@ -80,6 +128,11 @@ function App() {
   }
 
   const processQueue = async () => {
+    if (!selectedProjectId) {
+      toast.error('Please select a project first')
+      return
+    }
+    
     if (!queue) return
     
     const pendingPrompts = queue.filter(p => p.status === 'idle' || p.status === 'error')
@@ -217,6 +270,87 @@ function App() {
           </p>
         </div>
 
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="space-y-1">
+                <CardTitle className="text-xl">Project Selection</CardTitle>
+                <CardDescription className="text-xs font-mono">
+                  Choose or create a Spark project
+                </CardDescription>
+              </div>
+              <Button 
+                onClick={() => setShowProjectDialog(true)}
+                variant="outline"
+                size="sm"
+              >
+                <Plus weight="bold" className="mr-2" />
+                New Project
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {(projects?.length || 0) === 0 ? (
+              <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
+                <Folder size={32} className="mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No projects yet</p>
+                <p className="text-xs mt-1">Create a project to get started</p>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <Select value={selectedProjectId || undefined} onValueChange={(value) => setSelectedProjectId(value)}>
+                  <SelectTrigger className="flex-1 font-mono">
+                    <SelectValue placeholder="Select a project">
+                      {selectedProject && (
+                        <div className="flex items-center gap-2">
+                          <FolderOpen size={16} className="text-accent" />
+                          <span>{selectedProject.name}</span>
+                        </div>
+                      )}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects?.map((project) => (
+                      <SelectItem key={project.id} value={project.id} className="font-mono">
+                        <div className="flex items-center gap-2">
+                          <Folder size={16} className="text-muted-foreground" />
+                          <div>
+                            <div>{project.name}</div>
+                            {project.description && (
+                              <div className="text-xs text-muted-foreground">{project.description}</div>
+                            )}
+                          </div>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                {selectedProjectId && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => {
+                      if (selectedProjectId) {
+                        deleteProject(selectedProjectId)
+                      }
+                    }}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/20 shrink-0"
+                  >
+                    <Trash size={16} />
+                  </Button>
+                )}
+              </div>
+            )}
+            
+            {selectedProject?.description && (
+              <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md font-mono">
+                {selectedProject.description}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         <Card className={`border-2 transition-all duration-300 ${
           isProcessing ? 'border-accent animate-pulse-border' : 'border-border'
         }`}>
@@ -299,16 +433,21 @@ function App() {
                     onKeyDown={(e) => e.key === 'Enter' && addPrompt()}
                     placeholder="Enter your prompt..."
                     className="font-mono text-sm"
-                    disabled={isProcessing}
+                    disabled={isProcessing || !selectedProjectId}
                   />
                   <Button 
                     onClick={addPrompt}
-                    disabled={isProcessing}
+                    disabled={isProcessing || !selectedProjectId}
                     className="shrink-0"
                   >
                     <Plus weight="bold" />
                   </Button>
                 </div>
+                {!selectedProjectId && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Select a project first
+                  </p>
+                )}
               </CardContent>
             </Card>
 
@@ -500,6 +639,70 @@ function App() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showProjectDialog} onOpenChange={setShowProjectDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-mono text-base">Create New Project</DialogTitle>
+            <DialogDescription className="text-xs">
+              Add a new Spark project to organize your prompts
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="project-name" className="text-xs text-muted-foreground tracking-wide uppercase">
+                Project Name
+              </label>
+              <Input
+                id="project-name"
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newProjectName.trim()) {
+                    addProject()
+                  }
+                }}
+                placeholder="My Spark Project"
+                className="font-mono text-sm"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label htmlFor="project-description" className="text-xs text-muted-foreground tracking-wide uppercase">
+                Description (Optional)
+              </label>
+              <Input
+                id="project-description"
+                value={newProjectDescription}
+                onChange={(e) => setNewProjectDescription(e.target.value)}
+                placeholder="A brief description..."
+                className="font-mono text-sm"
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowProjectDialog(false)
+                  setNewProjectName('')
+                  setNewProjectDescription('')
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={addProject}
+                disabled={!newProjectName.trim()}
+                className="bg-accent text-accent-foreground hover:bg-accent/90"
+              >
+                <Plus weight="bold" className="mr-2" />
+                Create
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
       </div>
