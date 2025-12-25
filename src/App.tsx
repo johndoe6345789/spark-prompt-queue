@@ -134,7 +134,8 @@ function App() {
           ...headers,
           'Accept': 'application/json',
         },
-        credentials: includeCookies ? 'include' : 'omit'
+        credentials: includeCookies ? 'include' : 'omit',
+        mode: 'cors'
       })
 
       if (!response.ok) {
