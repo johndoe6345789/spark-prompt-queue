@@ -123,7 +123,7 @@ function App() {
       const user = await window.spark.user()
       const headers = customHeaders || DEFAULT_HEADERS
       
-      const response = await fetch('https://github.com/copilot/spark/workbench', {
+      const response = await fetch('https://github.com/copilot/spark/workbench.json', {
         headers: {
           ...headers,
           'Accept': 'application/json',
