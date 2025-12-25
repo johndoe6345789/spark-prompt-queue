@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Progress } from '@/components/ui/progress'
 import { Toaster } from '@/components/ui/sonner'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
 import { 
   Plus, 
@@ -24,7 +25,8 @@ import {
   FolderOpen,
   CloudArrowDown,
   Spinner,
-  Gear
+  Gear,
+  Cookie
 } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
@@ -71,6 +73,7 @@ function App() {
   const [projects, setProjects] = useKV<SparkProject[]>('spark-projects', [])
   const [selectedProjectId, setSelectedProjectId] = useKV<string | null>('selected-project-id', null)
   const [customHeaders, setCustomHeaders] = useKV<Record<string, string>>('workbench-headers', DEFAULT_HEADERS)
+  const [includeCookies, setIncludeCookies] = useKV<boolean>('include-cookies', true)
   const [newPrompt, setNewPrompt] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [currentPromptId, setCurrentPromptId] = useState<string | null>(null)
@@ -125,7 +128,7 @@ function App() {
           ...headers,
           'Accept': 'application/json',
         },
-        credentials: 'include'
+        credentials: includeCookies ? 'include' : 'omit'
       })
 
       if (!response.ok) {
@@ -832,12 +835,34 @@ function App() {
       <Dialog open={showOptionsDialog} onOpenChange={setShowOptionsDialog}>
         <DialogContent className="max-w-3xl max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle className="font-mono text-base">Workbench Headers Configuration</DialogTitle>
+            <DialogTitle className="font-mono text-base">Workbench Configuration</DialogTitle>
             <DialogDescription className="text-xs">
-              Configure custom HTTP headers for workbench API requests
+              Configure HTTP headers and request options for workbench API
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+              <Checkbox
+                id="include-cookies"
+                checked={includeCookies}
+                onCheckedChange={(checked) => setIncludeCookies(checked === true)}
+              />
+              <div className="flex items-center gap-2 flex-1">
+                <Cookie size={18} className="text-accent" />
+                <div className="flex-1">
+                  <label 
+                    htmlFor="include-cookies" 
+                    className="text-sm font-medium cursor-pointer"
+                  >
+                    Include Cookies
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    Send cookies with workbench fetch requests (credentials: include)
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <label htmlFor="headers-json" className="text-xs text-muted-foreground tracking-wide uppercase">
                 Headers (JSON Format)
@@ -847,7 +872,7 @@ function App() {
                 value={headersText}
                 onChange={(e) => setHeadersText(e.target.value)}
                 placeholder='{"accept": "application/json"}'
-                className="font-mono text-xs h-[400px] resize-none"
+                className="font-mono text-xs h-[350px] resize-none"
               />
               <p className="text-xs text-muted-foreground">
                 Enter headers as a JSON object. Sensitive headers are automatically filtered for security.
