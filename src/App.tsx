@@ -124,10 +124,26 @@ function App() {
     try {
       toast.info('Step 1: Establishing session...')
       
-      const initialResponse = await fetch('https://github.com/spark', {
-        credentials: includeCookies ? 'include' : 'omit',
-        mode: useSameOriginMode ? 'same-origin' : 'cors'
-      })
+      const initialResponse = await fetch("https://github.com/spark", {
+  "headers": {
+    "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+    "accept-language": "en-GB,en-US;q=0.9,en;q=0.8",
+    "if-none-match": "W/\"9cfc25c50c3ace7f1407a8b7d3e418b3\"",
+    "priority": "u=0, i",
+    "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": "\"macOS\"",
+    "sec-fetch-dest": "document",
+    "sec-fetch-mode": "navigate",
+    "sec-fetch-site": "none",
+    "sec-fetch-user": "?1",
+    "upgrade-insecure-requests": "1"
+  },
+  "body": null,
+  "method": "GET",
+  "mode": "cors",
+  "credentials": "include"
+});
 
       if (!initialResponse.ok) {
         throw new Error(`Failed to establish session: ${initialResponse.status}`)
